@@ -1,0 +1,385 @@
+============================= test session starts ==============================
+platform linux -- Python 3.10.6, pytest-8.3.2, pluggy-1.5.0 -- /home/yasnoz/.pyenv/versions/3.10.6/envs/taxifare-env/bin/python
+cachedir: .pytest_cache
+rootdir: /home/yasnoz/code/yasnoz/07-ML-Ops/02-Cloud-training/data-train-in-the-cloud/tests
+configfile: pytest_kitt.ini
+plugins: anyio-3.7.1, asyncio-0.24.0
+asyncio: mode=strict, default_loop_scope=None
+collecting ... collected 9 items
+
+tests/cloud_training/test_cloud_data.py::TestCloudData::test_big_query_dataset_variable_exists PASSED [ 11%]
+tests/cloud_training/test_cloud_data.py::TestCloudData::test_cloud_data_create_dataset PASSED [ 22%]
+tests/cloud_training/test_cloud_data.py::TestCloudData::test_cloud_data_create_table PASSED [ 33%]
+tests/cloud_training/test_main.py::TestMain::test_route_preprocess FAILED [ 44%]
+tests/cloud_training/test_main.py::TestMain::test_route_train[local] FAILED [ 55%]
+tests/cloud_training/test_main.py::TestMain::test_route_train[gcs] FAILED [ 66%]
+tests/cloud_training/test_main.py::TestMain::test_route_evaluate FAILED  [ 77%]
+tests/cloud_training/test_main.py::TestMain::test_route_pred FAILED      [ 88%]
+tests/cloud_training/test_vm.py::test_i_am_a_vm FAILED                   [100%]
+
+=================================== FAILURES ===================================
+________________________ TestMain.test_route_preprocess ________________________
+
+self = <tests.cloud_training.test_main.TestMain object at 0x7f186954f520>
+fixture_query_1k =      fare_amount           pickup_datetime  ...  dropoff_latitude  passenger_count
+0            8.9 2009-01-15 09:22:3...           4
+454          8.5 2014-12-27 16:47:42+00:00  ...         40.771263                4
+
+[455 rows x 7 columns]
+
+    def test_route_preprocess(self, fixture_query_1k):
+    
+        from taxifare.interface.main import preprocess
+    
+        data_query_path = Path(LOCAL_DATA_PATH).joinpath("raw",f"query_{MIN_DATE}_{MAX_DATE}_{DATA_SIZE}.csv")
+        data_processed_path = Path(LOCAL_DATA_PATH).joinpath("processed",f"processed_{MIN_DATE}_{MAX_DATE}_{DATA_SIZE}.csv")
+    
+        data_query_exists = data_query_path.is_file()
+        data_processed_exists = data_processed_path.is_file()
+    
+        # SETUP
+        if data_query_exists:
+            shutil.copyfile(data_query_path, f'{data_query_path}_backup')
+            data_query_path.unlink()
+        if data_processed_exists:
+            shutil.copyfile(data_processed_path, f'{data_processed_path}_backup')
+            data_processed_path.unlink()
+    
+        # ACT
+        # TODO: add try-except to be certain of reseting state if crash
+        # Check route runs querying Big Query
+>       preprocess(min_date=MIN_DATE, max_date=MAX_DATE)
+
+tests/cloud_training/test_main.py:43: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+min_date = '2009-01-01', max_date = '2015-01-01'
+
+    def preprocess(min_date:str = '2009-01-01', max_date:str = '2015-01-01') -> None:
+        """
+        - Query the raw dataset from Le Wagon's BigQuery dataset
+        - Cache query result as a local CSV if it doesn't exist locally
+        - Process query data
+        - Store processed data on your personal BQ (truncate existing table if it exists)
+        - No need to cache processed data as CSV (it will be cached when queried back from BQ during training)
+        """
+    
+        print(Fore.MAGENTA + "\n ⭐️ Use case: preprocess" + Style.RESET_ALL)
+    
+        # Query raw data from BigQuery using `get_data_with_cache`
+        min_date = parse(min_date).strftime('%Y-%m-%d') # e.g '2009-01-01'
+        max_date = parse(max_date).strftime('%Y-%m-%d') # e.g '2009-01-01'
+    
+        query = f"""
+            SELECT {",".join(COLUMN_NAMES_RAW)}
+            FROM `{GCP_PROJECT_WAGON}`.{BQ_DATASET}.raw_{DATA_SIZE}
+            WHERE pickup_datetime BETWEEN '{min_date}' AND '{max_date}'
+            ORDER BY pickup_datetime
+        """
+    
+        # YOUR CODE HERE
+    
+        # Fetch data from BigQuery and cache it locally
+>       data = get_data_with_cache(query=query, dataset_size=DATA_SIZE)
+E       TypeError: get_data_with_cache() got an unexpected keyword argument 'dataset_size'
+
+taxifare/interface/main.py:38: TypeError
+----------------------------- Captured stdout call -----------------------------
+[34m
+Loading TensorFlow...[0m
+
+✅ TensorFlow loaded (2.45s)
+[35m
+ ⭐️ Use case: preprocess[0m
+----------------------------- Captured stderr call -----------------------------
+2024-08-22 15:03:10.565098: I tensorflow/core/platform/cpu_feature_guard.cc:193] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX2 AVX512F AVX512_VNNI FMA
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2024-08-22 15:03:10.880470: I tensorflow/core/util/util.cc:169] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2024-08-22 15:03:10.895987: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'libcudart.so.11.0'; dlerror: libcudart.so.11.0: cannot open shared object file: No such file or directory
+2024-08-22 15:03:10.896033: I tensorflow/stream_executor/cuda/cudart_stub.cc:29] Ignore above cudart dlerror if you do not have a GPU set up on your machine.
+2024-08-22 15:03:10.954592: E tensorflow/stream_executor/cuda/cuda_blas.cc:2981] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2024-08-22 15:03:11.886587: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'libnvinfer.so.7'; dlerror: libnvinfer.so.7: cannot open shared object file: No such file or directory
+2024-08-22 15:03:11.886656: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'libnvinfer_plugin.so.7'; dlerror: libnvinfer_plugin.so.7: cannot open shared object file: No such file or directory
+2024-08-22 15:03:11.886663: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Cannot dlopen some TensorRT libraries. If you would like to use Nvidia GPU with TensorRT, please make sure the missing libraries mentioned above are installed properly.
+_______________________ TestMain.test_route_train[local] _______________________
+
+self = <tests.cloud_training.test_main.TestMain object at 0x7f186954f760>
+fixture_processed_1k =            0    1    2    3    4    5   ...   60   61   62   63   64         65
+0    0.000000  0.0  0.0  0.0  1.0  0.0...0.0   6.500000
+446  0.428571  0.0  0.0  0.0  0.0  0.0  ...  0.0  0.0  0.0  0.0  0.0   8.500000
+
+[447 rows x 66 columns]
+model_target = 'local'
+
+    @pytest.mark.parametrize('model_target', ['local' , 'gcs'])
+    def test_route_train(self, fixture_processed_1k, model_target):
+        """Test route train behave as expected, for various context of LOCAL or GCS model storage"""
+    
+        # 1) SETUP
+        old_model_target = os.environ.get("MODEL_TARGET")
+        os.environ.update(MODEL_TARGET=model_target)
+    
+        data_processed_path = Path(LOCAL_DATA_PATH).joinpath("processed",f"processed_{MIN_DATE}_{MAX_DATE}_{DATA_SIZE}.csv")
+        data_processed_exists = data_processed_path.is_file()
+        if data_processed_exists:
+            shutil.copyfile(data_processed_path, f'{data_processed_path}_backup')
+            data_processed_path.unlink()
+    
+        data_processed_fixture_path = "https://storage.googleapis.com/datascience-mlops/taxi-fare-ny/solutions/data_processed_fixture_2009-01-01_2015-01-01_1k.csv"
+        os.system(f"curl {data_processed_fixture_path} > {data_processed_path}")
+    
+        # 2) ACT
+        from taxifare.interface.main import train
+    
+        # Train it from Big Query
+>       train(min_date=MIN_DATE, max_date=MAX_DATE, learning_rate=0.01, patience=0)
+
+tests/cloud_training/test_main.py:85: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+min_date = '2009-01-01', max_date = '2015-01-01', split_ratio = 0.02
+learning_rate = 0.01, batch_size = 256, patience = 0
+
+    def train(
+            min_date:str = '2009-01-01',
+            max_date:str = '2015-01-01',
+            split_ratio: float = 0.02, # 0.02 represents ~ 1 month of validation data on a 2009-2015 train set
+            learning_rate=0.0005,
+            batch_size = 256,
+            patience = 2
+        ) -> float:
+    
+        """
+        - Download processed data from your BQ table (or from cache if it exists)
+        - Train on the preprocessed dataset (which should be ordered by date)
+        - Store training results and model weights
+    
+        Return val_mae as a float
+        """
+    
+        print(Fore.MAGENTA + "\n⭐️ Use case: train" + Style.RESET_ALL)
+        print(Fore.BLUE + "\nLoading preprocessed validation data..." + Style.RESET_ALL)
+    
+        min_date = parse(min_date).strftime('%Y-%m-%d') # e.g '2009-01-01'
+        max_date = parse(max_date).strftime('%Y-%m-%d') # e.g '2009-01-01'
+    
+        # Load processed data using `get_data_with_cache` in chronological order
+        # Try it out manually on console.cloud.google.com first!
+    
+         # YOUR CODE HERE
+    
+        # Query the processed data
+        query = f"""
+            SELECT *
+            FROM `{GCP_PROJECT_WAGON}.{BQ_DATASET}.processed_{DATA_SIZE}`
+            WHERE pickup_datetime BETWEEN '{min_date}' AND '{max_date}'
+            ORDER BY pickup_datetime
+        """
+    
+        # Load processed data using `get_data_with_cache`
+>       data = get_data_with_cache(query=query, dataset_size=DATA_SIZE)
+E       TypeError: get_data_with_cache() got an unexpected keyword argument 'dataset_size'
+
+taxifare/interface/main.py:90: TypeError
+----------------------------- Captured stdout call -----------------------------
+[35m
+⭐️ Use case: train[0m
+[34m
+Loading preprocessed validation data...[0m
+----------------------------- Captured stderr call -----------------------------
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100  153k  100  153k    0     0   245k      0 --:--:-- --:--:-- --:--:--  245k
+________________________ TestMain.test_route_train[gcs] ________________________
+
+self = <tests.cloud_training.test_main.TestMain object at 0x7f186954f850>
+fixture_processed_1k =            0    1    2    3    4    5   ...   60   61   62   63   64         65
+0    0.000000  0.0  0.0  0.0  1.0  0.0...0.0   6.500000
+446  0.428571  0.0  0.0  0.0  0.0  0.0  ...  0.0  0.0  0.0  0.0  0.0   8.500000
+
+[447 rows x 66 columns]
+model_target = 'gcs'
+
+    @pytest.mark.parametrize('model_target', ['local' , 'gcs'])
+    def test_route_train(self, fixture_processed_1k, model_target):
+        """Test route train behave as expected, for various context of LOCAL or GCS model storage"""
+    
+        # 1) SETUP
+        old_model_target = os.environ.get("MODEL_TARGET")
+        os.environ.update(MODEL_TARGET=model_target)
+    
+        data_processed_path = Path(LOCAL_DATA_PATH).joinpath("processed",f"processed_{MIN_DATE}_{MAX_DATE}_{DATA_SIZE}.csv")
+        data_processed_exists = data_processed_path.is_file()
+        if data_processed_exists:
+            shutil.copyfile(data_processed_path, f'{data_processed_path}_backup')
+            data_processed_path.unlink()
+    
+        data_processed_fixture_path = "https://storage.googleapis.com/datascience-mlops/taxi-fare-ny/solutions/data_processed_fixture_2009-01-01_2015-01-01_1k.csv"
+        os.system(f"curl {data_processed_fixture_path} > {data_processed_path}")
+    
+        # 2) ACT
+        from taxifare.interface.main import train
+    
+        # Train it from Big Query
+>       train(min_date=MIN_DATE, max_date=MAX_DATE, learning_rate=0.01, patience=0)
+
+tests/cloud_training/test_main.py:85: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+min_date = '2009-01-01', max_date = '2015-01-01', split_ratio = 0.02
+learning_rate = 0.01, batch_size = 256, patience = 0
+
+    def train(
+            min_date:str = '2009-01-01',
+            max_date:str = '2015-01-01',
+            split_ratio: float = 0.02, # 0.02 represents ~ 1 month of validation data on a 2009-2015 train set
+            learning_rate=0.0005,
+            batch_size = 256,
+            patience = 2
+        ) -> float:
+    
+        """
+        - Download processed data from your BQ table (or from cache if it exists)
+        - Train on the preprocessed dataset (which should be ordered by date)
+        - Store training results and model weights
+    
+        Return val_mae as a float
+        """
+    
+        print(Fore.MAGENTA + "\n⭐️ Use case: train" + Style.RESET_ALL)
+        print(Fore.BLUE + "\nLoading preprocessed validation data..." + Style.RESET_ALL)
+    
+        min_date = parse(min_date).strftime('%Y-%m-%d') # e.g '2009-01-01'
+        max_date = parse(max_date).strftime('%Y-%m-%d') # e.g '2009-01-01'
+    
+        # Load processed data using `get_data_with_cache` in chronological order
+        # Try it out manually on console.cloud.google.com first!
+    
+         # YOUR CODE HERE
+    
+        # Query the processed data
+        query = f"""
+            SELECT *
+            FROM `{GCP_PROJECT_WAGON}.{BQ_DATASET}.processed_{DATA_SIZE}`
+            WHERE pickup_datetime BETWEEN '{min_date}' AND '{max_date}'
+            ORDER BY pickup_datetime
+        """
+    
+        # Load processed data using `get_data_with_cache`
+>       data = get_data_with_cache(query=query, dataset_size=DATA_SIZE)
+E       TypeError: get_data_with_cache() got an unexpected keyword argument 'dataset_size'
+
+taxifare/interface/main.py:90: TypeError
+----------------------------- Captured stdout call -----------------------------
+[35m
+⭐️ Use case: train[0m
+[34m
+Loading preprocessed validation data...[0m
+----------------------------- Captured stderr call -----------------------------
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0 52  153k   52 82054    0     0   143k      0  0:00:01 --:--:--  0:00:01  143k100  153k  100  153k    0     0   238k      0 --:--:-- --:--:-- --:--:--  238k
+_________________________ TestMain.test_route_evaluate _________________________
+
+self = <tests.cloud_training.test_main.TestMain object at 0x7f186954fbb0>
+
+    @patch("taxifare.params.MODEL_TARGET", new='local')
+    def test_route_evaluate(self):
+        from taxifare.interface.main import evaluate
+    
+>       mae = evaluate(min_date=MIN_DATE, max_date=MAX_DATE)
+
+tests/cloud_training/test_main.py:107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+min_date = '2009-01-01', max_date = '2015-01-01', stage = 'Production'
+
+    def evaluate(
+            min_date:str = '2014-01-01',
+            max_date:str = '2015-01-01',
+            stage: str = "Production"
+        ) -> float:
+        """
+        Evaluate the performance of the latest production model on processed data
+        Return MAE as a float
+        """
+        print(Fore.MAGENTA + "\n⭐️ Use case: evaluate" + Style.RESET_ALL)
+    
+        model = load_model(stage=stage)
+>       assert model is not None
+E       AssertionError
+
+taxifare/interface/main.py:153: AssertionError
+----------------------------- Captured stdout call -----------------------------
+[35m
+⭐️ Use case: evaluate[0m
+[34m
+Load latest model from local registry...[0m
+___________________________ TestMain.test_route_pred ___________________________
+
+self = <tests.cloud_training.test_main.TestMain object at 0x7f186954fb80>
+
+    @patch("taxifare.params.MODEL_TARGET", new='local')
+    def test_route_pred(self):
+        from taxifare.interface.main import pred
+    
+>       y_pred = pred()
+
+tests/cloud_training/test_main.py:115: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+X_pred =             pickup_datetime  ...  passenger_count
+0 2013-07-06 17:18:00+00:00  ...                1
+
+[1 rows x 6 columns]
+
+    def pred(X_pred: pd.DataFrame = None) -> np.ndarray:
+        """
+        Make a prediction using the latest trained model
+        """
+    
+        print("\n⭐️ Use case: predict")
+    
+        if X_pred is None:
+            X_pred = pd.DataFrame(dict(
+            pickup_datetime=[pd.Timestamp("2013-07-06 17:18:00", tz='UTC')],
+            pickup_longitude=[-73.950655],
+            pickup_latitude=[40.783282],
+            dropoff_longitude=[-73.984365],
+            dropoff_latitude=[40.769802],
+            passenger_count=[1],
+            ))
+    
+        model = load_model()
+>       assert model is not None
+E       AssertionError
+
+taxifare/interface/main.py:213: AssertionError
+----------------------------- Captured stdout call -----------------------------
+
+⭐️ Use case: predict
+[34m
+Load latest model from local registry...[0m
+________________________________ test_i_am_a_vm ________________________________
+
+    def test_i_am_a_vm():
+        """
+        Test that this code is being run from a Google VM named as per env variable 'INSTANCE'
+        """
+    
+>       assert platform.node() == INSTANCE, f"You should be running from your instance named '{INSTANCE}'."
+E       AssertionError: You should be running from your instance named 'taxi-instance'.
+E       assert 'Yasin' == 'taxi-instance'
+E         
+E         - taxi-instance
+E         + Yasin
+
+tests/cloud_training/test_vm.py:9: AssertionError
+=========================== short test summary info ============================
+FAILED tests/cloud_training/test_main.py::TestMain::test_route_preprocess - T...
+FAILED tests/cloud_training/test_main.py::TestMain::test_route_train[local]
+FAILED tests/cloud_training/test_main.py::TestMain::test_route_train[gcs] - T...
+FAILED tests/cloud_training/test_main.py::TestMain::test_route_evaluate - Ass...
+FAILED tests/cloud_training/test_main.py::TestMain::test_route_pred - Asserti...
+FAILED tests/cloud_training/test_vm.py::test_i_am_a_vm - AssertionError: You ...
+========================= 6 failed, 3 passed in 9.49s ==========================
